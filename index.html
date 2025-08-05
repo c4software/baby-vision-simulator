@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Vision d’un bébé – Simulation</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #111;
+      color: #fff;
+      font-family: system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      margin: 1rem 0;
+    }
+
+    #controls {
+      width: 90%;
+      max-width: 500px;
+      margin-bottom: 1rem;
+    }
+
+    input[type="range"] {
+      width: 100%;
+    }
+
+    canvas {
+      max-width: 100%;
+      height: auto;
+      border: 3px solid #fff;
+      border-radius: 12px;
+      margin-bottom: 2rem;
+    }
+
+    video {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>Vision d’un bébé</h1>
+  <div id="controls">
+    <label for="ageSlider">Âge du bébé : <strong><span id="ageLabel">0</span> mois</strong></label>
+    <input type="range" id="ageSlider" min="0" max="24" value="0"/>
+  </div>
+
+  <video id="video" autoplay muted playsinline></video>
+  <canvas id="filtered"></canvas>
+
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('filtered');
+    const ctx = canvas.getContext('2d');
+    const ageSlider = document.getElementById('ageSlider');
+    const ageLabel = document.getElementById('ageLabel');
+
+    let blur = 6, contrast = 0.3, saturation = 0.2;
+
+    function updateParams(months) {
+      const t = months / 24;
+      blur = Math.max(0, 6 * (1 - t));
+      contrast = 0.3 + 0.7 * t;
+      saturation = 0.2 + 0.8 * t;
+    }
+
+    ageSlider.addEventListener('input', () => {
+      const m = +ageSlider.value;
+      ageLabel.textContent = m;
+      updateParams(m);
+    });
+
+    function startCam() {
+      navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      })
+      .then(stream => {
+        video.srcObject = stream;
+        video.onloadedmetadata = () => {
+          const { videoWidth: vw, videoHeight: vh } = video;
+
+          // Ajuste le canvas au ratio réel
+          canvas.width = vw;
+          canvas.height = vh;
+
+          video.play();
+          drawLoop();
+        };
+      })
+      .catch(err => alert("Impossible d’accéder à la caméra."));
+    }
+
+    function drawLoop() {
+      ctx.filter = `blur(${blur}px) contrast(${contrast}) saturate(${saturation})`;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      requestAnimationFrame(drawLoop);
+    }
+
+    updateParams(0);
+    startCam();
+  </script>
+</body>
+</html>
