@@ -4,30 +4,24 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Vision d’un bébé</title>
-
-  <!-- ✅ Tailwind via CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-
   <style>
     html, body {
       margin: 0;
       padding: 0;
       height: 100%;
       overflow: hidden;
-      touch-action: none;
     }
 
-    video, canvas {
+    video {
+      display: none;
+    }
+
+    canvas {
       position: absolute;
       top: 0;
       left: 0;
-      width: 100vw;
-      height: 100vh;
-      object-fit: cover;
-    }
-
-    #video {
-      display: none;
+      z-index: 0;
     }
   </style>
 </head>
@@ -36,7 +30,6 @@
   <video id="video" autoplay playsinline muted></video>
   <canvas id="canvas"></canvas>
 
-  <!-- 🎛️ UI overlay -->
   <div class="absolute bottom-0 left-0 w-full px-4 py-3 bg-black/60 text-center backdrop-blur z-10">
     <label for="age" class="block text-sm mb-1">
       Âge du bébé : <span id="ageLabel">0</span> mois
@@ -58,14 +51,6 @@
     const ageSlider = document.getElementById('age');
     const ageLabel = document.getElementById('ageLabel');
 
-    function updateSize() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    }
-
-    window.addEventListener('resize', updateSize);
-    updateSize();
-
     let blur = 6, contrast = 0.3, saturation = 0.2;
 
     function updateParams(months) {
@@ -81,13 +66,50 @@
       updateParams(age);
     });
 
-    updateParams(0);
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    function drawCover(ctx, video, cw, ch) {
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+
+      if (!vw || !vh) return;
+
+      const videoRatio = vw / vh;
+      const canvasRatio = cw / ch;
+
+      let width, height, x, y;
+
+      if (videoRatio > canvasRatio) {
+        // vidéo plus large : on coupe les côtés
+        height = ch;
+        width = height * videoRatio;
+        x = (cw - width) / 2;
+        y = 0;
+      } else {
+        // vidéo plus haute : on coupe en haut/bas
+        width = cw;
+        height = width / videoRatio;
+        x = 0;
+        y = (ch - height) / 2;
+      }
+
+      ctx.filter = `blur(${blur}px) contrast(${contrast}) saturate(${saturation})`;
+      ctx.drawImage(video, x, y, width, height);
+    }
 
     function draw() {
-      ctx.filter = `blur(${blur}px) contrast(${contrast}) saturate(${saturation})`;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawCover(ctx, video, canvas.width, canvas.height);
       requestAnimationFrame(draw);
     }
+
+    updateParams(0);
 
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
       .then(stream => {
