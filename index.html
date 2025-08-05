@@ -4,14 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Vision d’un bébé</title>
+
+  <!-- ✅ Tailwind via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
   <style>
     html, body {
       margin: 0;
       padding: 0;
-      background: #000;
-      overflow: hidden;
       height: 100%;
-      font-family: system-ui, sans-serif;
+      overflow: hidden;
+      touch-action: none;
     }
 
     video, canvas {
@@ -26,37 +29,26 @@
     #video {
       display: none;
     }
-
-    .overlay {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      color: white;
-      padding: 1rem;
-      text-align: center;
-    }
-
-    label {
-      display: block;
-      font-size: 1rem;
-      margin-bottom: 0.3rem;
-    }
-
-    input[type="range"] {
-      width: 90%;
-      max-width: 600px;
-    }
   </style>
 </head>
-<body>
+<body class="bg-black text-white">
+
   <video id="video" autoplay playsinline muted></video>
   <canvas id="canvas"></canvas>
 
-  <div class="overlay">
-    <label for="age">Âge du bébé : <span id="ageLabel">0</span> mois</label>
-    <input type="range" id="age" min="0" max="24" value="0">
+  <!-- 🎛️ UI overlay -->
+  <div class="absolute bottom-0 left-0 w-full px-4 py-3 bg-black/60 text-center backdrop-blur z-10">
+    <label for="age" class="block text-sm mb-1">
+      Âge du bébé : <span id="ageLabel">0</span> mois
+    </label>
+    <input
+      type="range"
+      id="age"
+      min="0"
+      max="24"
+      value="0"
+      class="w-full max-w-md mx-auto appearance-none h-2 bg-gray-700 rounded-lg outline-none accent-blue-500"
+    >
   </div>
 
   <script>
