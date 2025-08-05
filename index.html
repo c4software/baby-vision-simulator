@@ -11,27 +11,35 @@
       padding: 0;
       height: 100%;
       overflow: hidden;
+      touch-action: none;
     }
-
-    video {
+    #video {
       display: none;
     }
-
-    canvas {
+    video, canvas {
       position: absolute;
-      top: 0;
-      left: 0;
-      z-index: 0;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      min-width: 100%;
+      min-height: 100%;
+      object-fit: cover;
     }
   </style>
 </head>
-<body class="bg-black text-white">
+<body class="bg-black text-white relative">
 
   <video id="video" autoplay playsinline muted></video>
   <canvas id="canvas"></canvas>
 
-  <div class="absolute bottom-0 left-0 w-full px-4 py-3 bg-black/60 text-center backdrop-blur z-10">
-    <label for="age" class="block text-sm mb-1">
+  <!-- 🔄 Message de chargement -->
+  <div id="loading" class="absolute inset-0 flex items-center justify-center z-20 bg-black/80 text-white text-xl">
+    Chargement de la caméra...
+  </div>
+
+  <!-- 🎛️ UI overlay -->
+  <div class="absolute bottom-0 left-0 w-full p-4 bg-black/60 text-white backdrop-blur z-10 text-center">
+    <label for="age" class="block text-sm mb-2">
       Âge du bébé : <span id="ageLabel">0</span> mois
     </label>
     <input
@@ -40,8 +48,17 @@
       min="0"
       max="24"
       value="0"
+      aria-label="Âge du bébé"
+      role="slider"
       class="w-full max-w-md mx-auto appearance-none h-2 bg-gray-700 rounded-lg outline-none accent-blue-500"
     >
+    <div id="description" class="mt-2 text-xs text-gray-200"></div>
+    <a href="https://naitreetgrandir.com/fr/etape/0_12_mois/developpement/naitre-grandir-developpement-sens-vue/"
+       class="block mt-2 text-blue-400 underline text-xs"
+       target="_blank"
+       rel="noopener">
+       En savoir plus sur le développement de la vue
+    </a>
   </div>
 
   <script>
@@ -50,14 +67,39 @@
     const ctx = canvas.getContext('2d');
     const ageSlider = document.getElementById('age');
     const ageLabel = document.getElementById('ageLabel');
+    const description = document.getElementById('description');
+    const loading = document.getElementById('loading');
+
+    function updateSize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+
+    window.addEventListener('resize', updateSize);
+    updateSize();
 
     let blur = 6, contrast = 0.3, saturation = 0.2;
 
     function updateParams(months) {
-      const t = months / 24;
+      const t = Math.min(months / 24, 1);
       blur = Math.max(0, 6 * (1 - t));
       contrast = 0.3 + 0.7 * t;
       saturation = 0.2 + 0.8 * t;
+
+      // Affichage du texte associé
+      let text = "";
+      if (months <= 1) {
+        text = "Vision très floue, noir et blanc, très faible contraste.";
+      } else if (months <= 3) {
+        text = "Vision floue, couleurs mal perçues, faible contraste.";
+      } else if (months <= 6) {
+        text = "Vision en amélioration, couleurs plus perceptibles.";
+      } else if (months <= 12) {
+        text = "Vision presque nette, meilleure perception des détails.";
+      } else {
+        text = "Vision presque comme un adulte.";
+      }
+      description.textContent = text;
     }
 
     ageSlider.addEventListener('input', () => {
@@ -66,63 +108,33 @@
       updateParams(age);
     });
 
-    function resizeCanvas() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    }
-
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-
-    function drawCover(ctx, video, cw, ch) {
-      const vw = video.videoWidth;
-      const vh = video.videoHeight;
-
-      if (!vw || !vh) return;
-
-      const videoRatio = vw / vh;
-      const canvasRatio = cw / ch;
-
-      let width, height, x, y;
-
-      if (videoRatio > canvasRatio) {
-        // vidéo plus large : on coupe les côtés
-        height = ch;
-        width = height * videoRatio;
-        x = (cw - width) / 2;
-        y = 0;
-      } else {
-        // vidéo plus haute : on coupe en haut/bas
-        width = cw;
-        height = width / videoRatio;
-        x = 0;
-        y = (ch - height) / 2;
-      }
-
-      ctx.filter = `blur(${blur}px) contrast(${contrast}) saturate(${saturation})`;
-      ctx.drawImage(video, x, y, width, height);
-    }
+    updateParams(0);
 
     function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawCover(ctx, video, canvas.width, canvas.height);
+      ctx.filter = `blur(${blur}px) contrast(${contrast}) saturate(${saturation})`;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       requestAnimationFrame(draw);
     }
-
-    updateParams(0);
 
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
       .then(stream => {
         video.srcObject = stream;
         video.onloadedmetadata = () => {
           video.play();
+          loading.style.display = "none";
           draw();
         };
       })
       .catch(err => {
-        alert("Impossible d'accéder à la caméra.");
+        loading.textContent = "Impossible d'accéder à la caméra.";
         console.error(err);
       });
+
+    // Arrêter la caméra si on quitte la page
+    window.addEventListener('beforeunload', () => {
+      const tracks = video.srcObject?.getTracks();
+      tracks?.forEach(t => t.stop());
+    });
   </script>
 </body>
 </html>
